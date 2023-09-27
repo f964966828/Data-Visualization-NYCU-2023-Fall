@@ -22,34 +22,30 @@ h2 {
     font-size: 24px;
 }
 
-div.attribute1-group, div.attribute2-group, div.attribute3-group, div.attribute4-group {
-    background-color: #dde8f4;
-    padding: 5px 10px;
-    margin-bottom: 20px;
-    border-radius: 5px;
-    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+/* General table styling */
+table {
+    width: 80%;
+    border-collapse: collapse;
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.15);
+    font-family: Arial, sans-serif;
+    margin: 20px;
 }
 
-label {
-    font-weight: bold;
-    margin-right: 10px;
-    color: #1a3d70;
+/* Table header styling */
+table th, table td {
+    width: 11.11%; /* Equal width for each cell */
 }
 
-.button, .toggle-button {
-    background-color: #ffffff;
-    color: #1a3d70;
-    border: 2px solid #1a3d70;
-    padding: 12px 20px;
-    margin-right: 10px;
-    cursor: pointer;
-    transition: background-color 0.3s, color 0.3s;
-    border-radius: 5px;
-    outline: none; 
+/* Table header styling */
+table th {
+    background-color: #11354d; /* You can choose your own color */
+    color: white;
+    padding: 10px;
+    text-align: left;
 }
 
-.toggle-button.active, 
-.button:hover, .toggle-button:hover {
-    background-color: #1a3d70; 
-    color: #ffffff; 
+/* Table data cells styling */
+table td {
+    padding: 10px;
+    border-bottom: 1px solid #d0d0d0;
 }
