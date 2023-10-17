@@ -150,7 +150,8 @@ function updatePlot() {
     plotLegend(z);
 }
 
-d3.csv("TIMES_WorldUniversityRankings_2024.csv").then( function(loadedData) {
+//d3.csv("TIMES_WorldUniversityRankings_2024.csv").then( function(loadedData) {
+d3.csv("http://vis.lab.djosix.com:2023/data/TIMES_WorldUniversityRankings_2024.csv").then( function(loadedData) {
     data = loadedData
         .filter(d => d['scores_overall'] != 'n/a')
         .map((d, index) => {
