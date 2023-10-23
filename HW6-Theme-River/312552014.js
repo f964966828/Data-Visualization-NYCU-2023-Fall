@@ -10,36 +10,48 @@ const svg = d3.select("#theme-river")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
   .append("g")
-    .attr("transform",
-          `translate(${margin.left}, ${margin.top})`);
+    .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-// Parse the Data
-d3.csv("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/5_OneCatSevNumOrdered_wide.csv").then(function(data) {
+function dmy_to_ymd(date) {
+  let parts = date.split("/");
+  return `${parts[2]}-${parts[1]}-${parts[0]}`;
+}
 
-  // List of groups = header of the csv files
-  const keys = data.columns.slice(1)
+d3.csv("ma_lga_12345.csv").then(function(data) {
+  data = data.map(d => {
+    d['saledate'] = dmy_to_ymd(d['saledate']);
+    d['type'] = d['type'] + "_" + d['bedrooms'];
+    d['MA'] = +d['MA'];
+    delete d['bedrooms'];
+    return d;
+  })
+  
+  let saledates = data.map(d => d['saledate']);
+  saledates = [...new Set(saledates)];
+  saledates.sort((a, b) => a.localeCompare(b));
+
+  const keys = [...new Set(data.map(d => d['type']))]
+  let riverData = [];
+  saledates.forEach(date => {
+    d = {'date': date};
+    keys.forEach(key => d[key] = 0);
+    riverData.push(d)
+  })
+
+  data.forEach(d => {
+    let index = saledates.indexOf(d['saledate']);
+    riverData[index][d['type']] += d['MA'];
+  })
+  riverData = riverData.filter(obj => !Object.values(obj).some(val => val === 0));
 
   // Add X axis
-  const x = d3.scaleLinear()
-    .domain(d3.extent(data, function(d) { return d.year; }))
-    .range([ 0, width ]);
-  svg.append("g")
-    .attr("transform", `translate(0, ${height*0.8})`)
-    .call(d3.axisBottom(x).tickSize(-height*.7).tickValues([1900, 1925, 1975, 2000]))
-    .select(".domain").remove()
-  // Customization
-  svg.selectAll(".tick line").attr("stroke", "#b8b8b8")
-
-  // Add X axis label:
-  svg.append("text")
-      .attr("text-anchor", "end")
-      .attr("x", width)
-      .attr("y", height-30 )
-      .text("Time (year)");
+  const x = d3.scaleUtc()
+    .domain(d3.extent(riverData, d => new Date(d.date)))
+    .range([0, width]);
 
   // Add Y axis
   const y = d3.scaleLinear()
-    .domain([-100000, 100000])
+    .domain([-2500000, 2500000])
     .range([ height, 0 ]);
 
   // color palette
@@ -47,14 +59,21 @@ d3.csv("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_data
     .domain(keys)
     .range(d3.schemeDark2);
 
-  //stack the data?
+  //stack the data
   const stackedData = d3.stack()
     .offset(d3.stackOffsetSilhouette)
     .keys(keys)
-    (data)
+    (riverData);
+  //console.log(keys, riverData[0], stackedData[0]);
+
+  // Area generator
+  const area = d3.area()
+    .x(function(d) { return x(new Date(d.data.date)); })
+    .y0(function(d) { return y(d[0]); })
+    .y1(function(d) { return y(d[1]); })
 
   // create a tooltip
-  const Tooltip = svg
+  var Tooltip = svg
     .append("text")
     .attr("x", 0)
     .attr("y", 0)
@@ -62,27 +81,18 @@ d3.csv("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_data
     .style("font-size", 17)
 
   // Three function that change the tooltip when user hover / move / leave a cell
-  const mouseover = function(event,d) {
+  var mouseover = function(event, d) {
+    console.log(d);
     Tooltip.style("opacity", 1)
     d3.selectAll(".myArea").style("opacity", .2)
     d3.select(this)
       .style("stroke", "black")
       .style("opacity", 1)
   }
-  const mousemove = function(event,d,i) {
-    grp = d.key
-    Tooltip.text(grp)
-  }
-  const mouseleave = function(event,d) {
+  var mouseleave = function(event, d) {
     Tooltip.style("opacity", 0)
     d3.selectAll(".myArea").style("opacity", 1).style("stroke", "none")
    }
-
-  // Area generator
-  const area = d3.area()
-    .x(function(d) { return x(d.data.year); })
-    .y0(function(d) { return y(d[0]); })
-    .y1(function(d) { return y(d[1]); })
 
   // Show the areas
   svg
@@ -93,7 +103,5 @@ d3.csv("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_data
       .style("fill", function(d) { return color(d.key); })
       .attr("d", area)
       .on("mouseover", mouseover)
-      .on("mousemove", mousemove)
       .on("mouseleave", mouseleave)
-
 })
