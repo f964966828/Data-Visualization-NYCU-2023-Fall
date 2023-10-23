@@ -1,6 +1,6 @@
 
 // set the dimensions and margins of the graph
-const margin = {top: 20, right: 30, bottom: 0, left: 10},
+const margin = {top: 50, right: 60, bottom: 30, left: 50},
     width = 1200 - margin.left - margin.right,
     height = 600 - margin.top - margin.bottom;
 
@@ -43,11 +43,24 @@ d3.csv("ma_lga_12345.csv").then(function(data) {
     riverData[index][d['type']] += d['MA'];
   })
   riverData = riverData.filter(obj => !Object.values(obj).some(val => val === 0));
-
+  console.log(riverData.map(d => d.date));
   // Add X axis
   const x = d3.scaleUtc()
     .domain(d3.extent(riverData, d => new Date(d.date)))
     .range([0, width]);
+  svg.append("g")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x).tickSize(-height*.7))
+    .select(".domain").remove()
+  // Customization
+  svg.selectAll(".tick line").attr("stroke", "#b8b8b8")
+  // Add X axis label:
+  svg.append("text")
+      .attr("text-anchor", "end")
+      .attr("font-size", "20px")
+      .attr("x", width + 60)
+      .attr("y", height + 10)
+      .text("Time (year)");
 
   // Add Y axis
   const y = d3.scaleLinear()
@@ -64,7 +77,6 @@ d3.csv("ma_lga_12345.csv").then(function(data) {
     .offset(d3.stackOffsetSilhouette)
     .keys(keys)
     (riverData);
-  //console.log(keys, riverData[0], stackedData[0]);
 
   // Area generator
   const area = d3.area()
@@ -73,26 +85,45 @@ d3.csv("ma_lga_12345.csv").then(function(data) {
     .y1(function(d) { return y(d[1]); })
 
   // create a tooltip
-  var Tooltip = svg
-    .append("text")
-    .attr("x", 0)
-    .attr("y", 0)
+  var tooltip = d3.select("#theme-river")
+    .append("div")
     .style("opacity", 0)
-    .style("font-size", 17)
+    .attr("class", "tooltip")
+    .style("background-color", "white")
+    .style("border", "solid")
+    .style("border-width", "2px")
+    .style("border-radius", "5px")
+    .style("padding", "5px")
+    .style("position", "relative")
+    .style("width", "200px")
+    .style("height", "auto")
 
   // Three function that change the tooltip when user hover / move / leave a cell
   var mouseover = function(event, d) {
-    console.log(d);
-    Tooltip.style("opacity", 1)
+    tooltip.style("opacity", 1)
     d3.selectAll(".myArea").style("opacity", .2)
     d3.select(this)
       .style("stroke", "black")
       .style("opacity", 1)
   }
+  var mousemove = function(event, d) {
+    let index = Math.round((event.pageX - 70) / 1090 * riverData.length);
+    index = Math.min(index, riverData.length - 1);
+    let key = d3.select(this).attr("key");
+    tooltip
+      .style("left", (event.pageX-120) + "px")
+      .style("top", (event.pageY-750) + "px")
+      .html(`
+        <label>${key}</label><br>
+        Date: ${riverData[index].date}<br>
+        MA: ${riverData[index][key]}
+      `)
+    console.log(riverData[index][key]);
+  }
   var mouseleave = function(event, d) {
-    Tooltip.style("opacity", 0)
+    tooltip.style("opacity", 0)
     d3.selectAll(".myArea").style("opacity", 1).style("stroke", "none")
-   }
+  }
 
   // Show the areas
   svg
@@ -100,8 +131,36 @@ d3.csv("ma_lga_12345.csv").then(function(data) {
     .data(stackedData)
     .join("path")
       .attr("class", "myArea")
-      .style("fill", function(d) { return color(d.key); })
       .attr("d", area)
+      .attr("key", function(d) { return d.key; })
+      .style("fill", function(d) { return color(d.key); })
       .on("mouseover", mouseover)
+      .on("mousemove", mousemove)
       .on("mouseleave", mouseleave)
+
+  // Legend settings
+  const legendCircleRadius = 10;  
+  const legendSpacing = 150;    
+  const legendYOffset = -20;     
+
+  const legendXStart = 30;
+  const legend = svg.selectAll('.legend') 
+      .data(color.domain())
+      .enter().append('g')
+      .attr('class', 'legend')
+      .attr('transform', (d, i) => `translate(${legendXStart + i * (legendCircleRadius * 2 + legendSpacing)}, ${legendYOffset})`)
+      .attr('font-family', 'sans-serif')
+      .attr('font-size', '10px')
+      .attr('text-anchor', 'middle');
+
+  legend.append('circle')
+      .attr('r', legendCircleRadius)
+      .style('fill', color)
+      .style('stroke', color);
+
+  legend.append('text')
+      .attr('y', legendCircleRadius + 15) 
+      .attr('dy', '0.35em')
+      .attr('font-size', '15px')
+      .text(d => d);
 })

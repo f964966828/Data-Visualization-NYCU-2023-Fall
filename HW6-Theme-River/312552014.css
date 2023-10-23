@@ -21,3 +21,12 @@ h1 {
 h2 {
     font-size: 24px;
 }
+
+label {
+    display: inline-block;
+    width: 200px;
+    text-align: center;
+    font-weight: bold;
+    margin-right: 10px;
+    color: #1a3d70;
+}
