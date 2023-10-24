@@ -17,7 +17,8 @@ function dmy_to_ymd(date) {
   return `${parts[2]}-${parts[1]}-${parts[0]}`;
 }
 
-d3.csv("ma_lga_12345.csv").then(function(data) {
+//d3.csv("ma_lga_12345.csv").then(function(data) {
+d3.csv("http://vis.lab.djosix.com:2023/data/ma_lga_12345.csv").then(function(data) {
   data = data.map(d => {
     d['saledate'] = dmy_to_ymd(d['saledate']);
     d['type'] = d['type'] + "_" + d['bedrooms'];
