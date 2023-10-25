@@ -30,7 +30,9 @@ let scheme = {
     'PM10': d3.schemeReds,
     'PM2.5': d3.shemeGreys,
 };
-d3.csv("air-pollution.csv").then(function (rawData) {
+
+//d3.csv("air-pollution.csv").then(function (rawData) {
+d3.csv("http://vis.lab.djosix.com:2023/data/air-pollution.csv").then(function (rawData) {
     let uniqueDistricts = new Set();
     let districts = rawData.map(d => {
         let obj = {
@@ -149,7 +151,7 @@ function updatePlot() {
 var mouseover = function (event, d) {
     tooltip.style("opacity", 1);
     d3.select(this)
-      .style("stroke", "black")
+        .style("stroke", "black")
 }
 var mousemove = function (event, d) {
     let code = d[0];
