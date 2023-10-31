@@ -321,7 +321,7 @@ var path = sankey.link();
 
 const columns = ["buying", "maint", "doors", "persons", "lug_boot", "safety", "class"];
 
-d3.text("car.data", function (data) {
+d3.text("http://vis.lab.djosix.com:2023/data/car.data", function (data) {
     let link_map = {};
     let node_set = new Set();
     data.replace(/\r/g, "").split('\n').slice(0, -1).forEach(line => {
