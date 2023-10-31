@@ -1,158 +1,483 @@
 
+d3.sankey = function () {
+    var sankey = {},
+        nodeWidth = 24,
+        nodePadding = 8,
+        size = [1, 1],
+        nodes = [],
+        links = [];
 
+    sankey.nodeWidth = function (_) {
+        if (!arguments.length) return nodeWidth;
+        nodeWidth = +_;
+        return sankey;
+    };
 
-// Copyright 2021-2023 Observable, Inc.
-// Released under the ISC license.
-// https://observablehq.com/@d3/sankey-diagram
-function SankeyChart({
-    nodes, // an iterable of node objects (typically [{id}, …]); implied by links if missing
-    links // an iterable of link objects (typically [{source, target}, …])
-}, {
-    format = ",", // a function or format specifier for values in titles
-    align = "justify", // convenience shorthand for nodeAlign
-    nodeId = d => d.id, // given d in nodes, returns a unique identifier (string)
-    nodeGroup, // given d in nodes, returns an (ordinal) value for color
-    nodeGroups, // an array of ordinal values representing the node groups
-    nodeLabel, // given d in (computed) nodes, text to label the associated rect
-    nodeTitle = d => `${d.id}\n${format(d.value)}`, // given d in (computed) nodes, hover text
-    nodeAlign = align, // Sankey node alignment strategy: left, right, justify, center
-    nodeSort, // comparator function to order nodes
-    nodeWidth = 15, // width of node rects
-    nodePadding = 10, // vertical separation between adjacent nodes
-    nodeLabelPadding = 6, // horizontal separation between node and label
-    nodeStroke = "currentColor", // stroke around node rects
-    nodeStrokeWidth, // width of stroke around node rects, in pixels
-    nodeStrokeOpacity, // opacity of stroke around node rects
-    nodeStrokeLinejoin, // line join for stroke around node rects
-    linkSource = ({ source }) => source, // given d in links, returns a node identifier string
-    linkTarget = ({ target }) => target, // given d in links, returns a node identifier string
-    linkValue = ({ value }) => value, // given d in links, returns the quantitative value
-    linkPath = d3Sankey.sankeyLinkHorizontal(), // given d in (computed) links, returns the SVG path
-    linkTitle = d => `${d.source.id} → ${d.target.id}\n${format(d.value)}`, // given d in (computed) links
-    linkColor = "source-target", // source, target, source-target, or static color
-    linkStrokeOpacity = 0.5, // link stroke opacity
-    linkMixBlendMode = "multiply", // link blending mode
-    colors = d3.schemeTableau10, // array of colors
-    width = 640, // outer width, in pixels
-    height = 400, // outer height, in pixels
-    marginTop = 5, // top margin, in pixels
-    marginRight = 1, // right margin, in pixels
-    marginBottom = 5, // bottom margin, in pixels
-    marginLeft = 1, // left margin, in pixels
-} = {}) {
-    // Convert nodeAlign from a name to a function (since d3-sankey is not part of core d3).
-    if (typeof nodeAlign !== "function") nodeAlign = {
-        left: d3Sankey.sankeyLeft,
-        right: d3Sankey.sankeyRight,
-        center: d3Sankey.sankeyCenter
-    }[nodeAlign] ?? d3Sankey.sankeyJustify;
+    sankey.nodePadding = function (_) {
+        if (!arguments.length) return nodePadding;
+        nodePadding = +_;
+        return sankey;
+    };
 
-    // Compute values.
-    const LS = d3.map(links, linkSource).map(intern);
-    const LT = d3.map(links, linkTarget).map(intern);
-    const LV = d3.map(links, linkValue);
-    if (nodes === undefined) nodes = Array.from(d3.union(LS, LT), id => ({ id }));
-    const N = d3.map(nodes, nodeId).map(intern);
-    const G = nodeGroup == null ? null : d3.map(nodes, nodeGroup).map(intern);
+    sankey.nodes = function (_) {
+        if (!arguments.length) return nodes;
+        nodes = _;
+        return sankey;
+    };
 
-    // Replace the input nodes and links with mutable objects for the simulation.
-    nodes = d3.map(nodes, (_, i) => ({ id: N[i] }));
-    links = d3.map(links, (_, i) => ({ source: LS[i], target: LT[i], value: LV[i] }));
+    sankey.links = function (_) {
+        if (!arguments.length) return links;
+        links = _;
+        return sankey;
+    };
 
-    // Ignore a group-based linkColor option if no groups are specified.
-    if (!G && ["source", "target", "source-target"].includes(linkColor)) linkColor = "currentColor";
+    sankey.size = function (_) {
+        if (!arguments.length) return size;
+        size = _;
+        return sankey;
+    };
 
-    // Compute default domains.
-    if (G && nodeGroups === undefined) nodeGroups = G;
+    sankey.layout = function (iterations) {
+        computeNodeLinks();
+        computeNodeValues();
+        computeNodeBreadths();
+        computeNodeDepths(iterations);
+        computeLinkDepths();
+        return sankey;
+    };
 
-    // Construct the scales.
-    const color = nodeGroup == null ? null : d3.scaleOrdinal(nodeGroups, colors);
+    sankey.relayout = function () {
+        computeLinkDepths();
+        return sankey;
+    };
 
-    // Compute the Sankey layout.
-    d3Sankey.sankey()
-        .nodeId(({ index: i }) => N[i])
-        .nodeAlign(nodeAlign)
-        .nodeWidth(nodeWidth)
-        .nodePadding(nodePadding)
-        .nodeSort(nodeSort)
-        .extent([[marginLeft, marginTop], [width - marginRight, height - marginBottom]])
-        ({ nodes, links });
+    sankey.link = function () {
+        var curvature = .5;
 
-    // Compute titles and labels using layout nodes, so as to access aggregate values.
-    if (typeof format !== "function") format = d3.format(format);
-    const Tl = nodeLabel === undefined ? N : nodeLabel == null ? null : d3.map(nodes, nodeLabel);
-    const Tt = nodeTitle == null ? null : d3.map(nodes, nodeTitle);
-    const Lt = linkTitle == null ? null : d3.map(links, linkTitle);
+        function link(d) {
+            var x0 = d.source.x + d.source.dx,
+                x1 = d.target.x,
+                xi = d3.interpolateNumber(x0, x1),
+                x2 = xi(curvature),
+                x3 = xi(1 - curvature),
+                y0 = d.source.y + d.sy + d.dy / 2,
+                y1 = d.target.y + d.ty + d.dy / 2;
+            return "M" + x0 + "," + y0
+                + "C" + x2 + "," + y0
+                + " " + x3 + "," + y1
+                + " " + x1 + "," + y1;
+        }
 
-    // A unique identifier for clip paths (to avoid conflicts).
-    const uid = `O-${Math.random().toString(16).slice(2)}`;
+        link.curvature = function (_) {
+            if (!arguments.length) return curvature;
+            curvature = +_;
+            return link;
+        };
 
-    const svg = d3.create("svg")
-        .attr("width", width)
-        .attr("height", height)
-        .attr("viewBox", [0, 0, width, height])
-        .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
+        return link;
+    };
 
-    const node = svg.append("g")
-        .attr("stroke", nodeStroke)
-        .attr("stroke-width", nodeStrokeWidth)
-        .attr("stroke-opacity", nodeStrokeOpacity)
-        .attr("stroke-linejoin", nodeStrokeLinejoin)
-        .selectAll("rect")
-        .data(nodes)
-        .join("rect")
-        .attr("x", d => d.x0)
-        .attr("y", d => d.y0)
-        .attr("height", d => d.y1 - d.y0)
-        .attr("width", d => d.x1 - d.x0);
-
-    if (G) node.attr("fill", ({ index: i }) => color(G[i]));
-    if (Tt) node.append("title").text(({ index: i }) => Tt[i]);
-
-    const link = svg.append("g")
-        .attr("fill", "none")
-        .attr("stroke-opacity", linkStrokeOpacity)
-        .selectAll("g")
-        .data(links)
-        .join("g")
-        .style("mix-blend-mode", linkMixBlendMode);
-
-    if (linkColor === "source-target") link.append("linearGradient")
-        .attr("id", d => `${uid}-link-${d.index}`)
-        .attr("gradientUnits", "userSpaceOnUse")
-        .attr("x1", d => d.source.x1)
-        .attr("x2", d => d.target.x0)
-        .call(gradient => gradient.append("stop")
-            .attr("offset", "0%")
-            .attr("stop-color", ({ source: { index: i } }) => color(G[i])))
-        .call(gradient => gradient.append("stop")
-            .attr("offset", "100%")
-            .attr("stop-color", ({ target: { index: i } }) => color(G[i])));
-
-    link.append("path")
-        .attr("d", linkPath)
-        .attr("stroke", linkColor === "source-target" ? ({ index: i }) => `url(#${uid}-link-${i})`
-            : linkColor === "source" ? ({ source: { index: i } }) => color(G[i])
-                : linkColor === "target" ? ({ target: { index: i } }) => color(G[i])
-                    : linkColor)
-        .attr("stroke-width", ({ width }) => Math.max(1, width))
-        .call(Lt ? path => path.append("title").text(({ index: i }) => Lt[i]) : () => { });
-
-    if (Tl) svg.append("g")
-        .attr("font-family", "sans-serif")
-        .attr("font-size", 10)
-        .selectAll("text")
-        .data(nodes)
-        .join("text")
-        .attr("x", d => d.x0 < width / 2 ? d.x1 + nodeLabelPadding : d.x0 - nodeLabelPadding)
-        .attr("y", d => (d.y1 + d.y0) / 2)
-        .attr("dy", "0.35em")
-        .attr("text-anchor", d => d.x0 < width / 2 ? "start" : "end")
-        .text(({ index: i }) => Tl[i]);
-
-    function intern(value) {
-        return value !== null && typeof value === "object" ? value.valueOf() : value;
+    // Populate the sourceLinks and targetLinks for each node.
+    // Also, if the source and target are not objects, assume they are indices.
+    function computeNodeLinks() {
+        nodes.forEach(function (node) {
+            node.sourceLinks = [];
+            node.targetLinks = [];
+        });
+        links.forEach(function (link) {
+            var source = link.source,
+                target = link.target;
+            if (typeof source === "number") source = link.source = nodes[link.source];
+            if (typeof target === "number") target = link.target = nodes[link.target];
+            source.sourceLinks.push(link);
+            target.targetLinks.push(link);
+        });
     }
 
-    return Object.assign(svg.node(), { scales: { color } });
-}
+    // Compute the value (size) of each node by summing the associated links.
+    function computeNodeValues() {
+        nodes.forEach(function (node) {
+            node.value = Math.max(
+                d3.sum(node.sourceLinks, value),
+                d3.sum(node.targetLinks, value)
+            );
+        });
+    }
+
+    // Iteratively assign the breadth (x-position) for each node.
+    // Nodes are assigned the maximum breadth of incoming neighbors plus one;
+    // nodes with no incoming links are assigned breadth zero, while
+    // nodes with no outgoing links are assigned the maximum breadth.
+    function computeNodeBreadths() {
+        var remainingNodes = nodes,
+            nextNodes,
+            x = 0;
+
+        while (remainingNodes.length) {
+            nextNodes = [];
+            remainingNodes.forEach(function (node) {
+                node.x = x;
+                node.dx = nodeWidth;
+                node.sourceLinks.forEach(function (link) {
+                    nextNodes.push(link.target);
+                });
+            });
+            remainingNodes = nextNodes;
+            ++x;
+        }
+
+        //
+        moveSinksRight(x);
+        scaleNodeBreadths((size[0] - nodeWidth) / (x - 1));
+    }
+
+    function moveSourcesRight() {
+        nodes.forEach(function (node) {
+            if (!node.targetLinks.length) {
+                node.x = d3.min(node.sourceLinks, function (d) { return d.target.x; }) - 1;
+            }
+        });
+    }
+
+    function moveSinksRight(x) {
+        nodes.forEach(function (node) {
+            if (!node.sourceLinks.length) {
+                node.x = x - 1;
+            }
+        });
+    }
+
+    function scaleNodeBreadths(kx) {
+        nodes.forEach(function (node) {
+            node.x *= kx;
+        });
+    }
+
+    function computeNodeDepths(iterations) {
+        var nodesByBreadth = d3.nest()
+            .key(function (d) { return d.x; })
+            .sortKeys(d3.ascending)
+            .entries(nodes)
+            .map(function (d) { return d.values; });
+
+        //
+        initializeNodeDepth();
+        resolveCollisions();
+        for (var alpha = 1; iterations > 0; --iterations) {
+            relaxRightToLeft(alpha *= .99);
+            resolveCollisions();
+            relaxLeftToRight(alpha);
+            resolveCollisions();
+        }
+
+        function initializeNodeDepth() {
+            var ky = d3.min(nodesByBreadth, function (nodes) {
+                return (size[1] - (nodes.length - 1) * nodePadding) / d3.sum(nodes, value);
+            });
+
+            nodesByBreadth.forEach(function (nodes) {
+                nodes.forEach(function (node, i) {
+                    node.y = i;
+                    node.dy = node.value * ky;
+                });
+            });
+
+            links.forEach(function (link) {
+                link.dy = link.value * ky;
+            });
+        }
+
+        function relaxLeftToRight(alpha) {
+            nodesByBreadth.forEach(function (nodes, breadth) {
+                nodes.forEach(function (node) {
+                    if (node.targetLinks.length) {
+                        var y = d3.sum(node.targetLinks, weightedSource) / d3.sum(node.targetLinks, value);
+                        node.y += (y - center(node)) * alpha;
+                    }
+                });
+            });
+
+            function weightedSource(link) {
+                return center(link.source) * link.value;
+            }
+        }
+
+        function relaxRightToLeft(alpha) {
+            nodesByBreadth.slice().reverse().forEach(function (nodes) {
+                nodes.forEach(function (node) {
+                    if (node.sourceLinks.length) {
+                        var y = d3.sum(node.sourceLinks, weightedTarget) / d3.sum(node.sourceLinks, value);
+                        node.y += (y - center(node)) * alpha;
+                    }
+                });
+            });
+
+            function weightedTarget(link) {
+                return center(link.target) * link.value;
+            }
+        }
+
+        function resolveCollisions() {
+            nodesByBreadth.forEach(function (nodes) {
+                var node,
+                    dy,
+                    y0 = 0,
+                    n = nodes.length,
+                    i;
+
+                // Push any overlapping nodes down.
+                nodes.sort(ascendingDepth);
+                for (i = 0; i < n; ++i) {
+                    node = nodes[i];
+                    dy = y0 - node.y;
+                    if (dy > 0) node.y += dy;
+                    y0 = node.y + node.dy + nodePadding;
+                }
+
+                // If the bottommost node goes outside the bounds, push it back up.
+                dy = y0 - nodePadding - size[1];
+                if (dy > 0) {
+                    y0 = node.y -= dy;
+
+                    // Push any overlapping nodes back up.
+                    for (i = n - 2; i >= 0; --i) {
+                        node = nodes[i];
+                        dy = node.y + node.dy + nodePadding - y0;
+                        if (dy > 0) node.y -= dy;
+                        y0 = node.y;
+                    }
+                }
+            });
+        }
+
+        function ascendingDepth(a, b) {
+            return a.y - b.y;
+        }
+    }
+
+    function computeLinkDepths() {
+        nodes.forEach(function (node) {
+            node.sourceLinks.sort(ascendingTargetDepth);
+            node.targetLinks.sort(ascendingSourceDepth);
+        });
+        nodes.forEach(function (node) {
+            var sy = 0, ty = 0;
+            node.sourceLinks.forEach(function (link) {
+                link.sy = sy;
+                sy += link.dy;
+            });
+            node.targetLinks.forEach(function (link) {
+                link.ty = ty;
+                ty += link.dy;
+            });
+        });
+
+        function ascendingSourceDepth(a, b) {
+            return a.source.y - b.source.y;
+        }
+
+        function ascendingTargetDepth(a, b) {
+            return a.target.y - b.target.y;
+        }
+    }
+
+    function center(node) {
+        return node.y + node.dy / 2;
+    }
+
+    function value(link) {
+        return link.value;
+    }
+
+    return sankey;
+};
+
+var units = "Widgets";
+
+var margin = { top: 10, right: 10, bottom: 10, left: 10 },
+    width = 1200 - margin.left - margin.right,
+    height = 740 - margin.top - margin.bottom;
+
+var formatNumber = d3.format(",.0f"),    // zero decimal places
+    format = function (d) { return formatNumber(d) + " " + units; },
+    color = d3.scale.category20();
+
+// append the svg canvas to the page
+var svg = d3.select("#chart").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+    .attr("transform",
+        "translate(" + margin.left + "," + margin.top + ")");
+
+// Set the sankey diagram properties
+var sankey = d3.sankey()
+    .nodeWidth(36)
+    .nodePadding(10)
+    .size([width, height]);
+
+var path = sankey.link();
+
+
+const columns = ["buying", "maint", "doors", "persons", "lug_boot", "safety", "class"];
+
+d3.text("car.data", function (data) {
+    let link_map = {};
+    let node_set = new Set();
+    data.replace(/\r/g, "").split('\n').slice(0, -1).forEach(line => {
+        let parts = line.split(',');
+        for (let i = 0; i < columns.length - 1; i++) {
+            let source = columns[i] + "_" + parts[i];
+            let target = columns[i + 1] + "_" + parts[i + 1];
+
+            if (!(source in link_map)) {
+                link_map[source] = {};
+            }
+            if (!(target in link_map[source])) {
+                link_map[source][target] = 0;
+            }
+            link_map[source][target]++;
+
+            node_set.add(source);
+            node_set.add(target);
+        }
+    })
+
+    let graph = {
+        'links': new Array(),
+        'nodes': new Array()
+    };
+    Object.keys(link_map).forEach(source => {
+        Object.keys(link_map[source]).forEach(target => {
+            let link = {
+                'source': source,
+                'target': target,
+                'value': link_map[source][target]
+            };
+            graph['links'].push(link);
+        })
+    })
+    node_set.forEach(node => {
+        graph['nodes'].push({ 'name': node });
+    })
+
+    var nodeMap = {};
+    graph.nodes.forEach(function (x) { nodeMap[x.name] = x; });
+    graph.links = graph.links.map(function (x) {
+        return {
+            source: nodeMap[x.source],
+            target: nodeMap[x.target],
+            value: x.value
+        };
+    });
+
+    sankey
+        .nodes(graph.nodes)
+        .links(graph.links)
+        .layout(32);
+
+    // add in the links
+    var link = svg.append("g").selectAll(".link")
+        .data(graph.links)
+        .enter().append("path")
+        .attr("class", "link")
+        .attr("d", path)
+        .style("stroke-width", function (d) { return Math.max(1, d.dy); })
+        .sort(function (a, b) { return b.dy - a.dy; })
+        .on("mouseover", mouseover)
+        .on("mousemove", mousemove)
+        .on("mouseleave", mouseleave);
+
+    // add the link titles
+    link.append("title")
+        .text(function (d) {
+            return d.source.name + " → " +
+                d.target.name + "\n" + format(d.value);
+        });
+
+    // add in the nodes
+    var node = svg.append("g").selectAll(".node")
+        .data(graph.nodes)
+        .enter().append("g")
+        .attr("class", "node")
+        .attr("transform", function (d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        })
+        .call(d3.behavior.drag()
+            .origin(function (d) { return d; })
+            .on("dragstart", function () {
+                this.parentNode.appendChild(this);
+            })
+            .on("drag", dragmove));
+
+    // add the rectangles for the nodes
+    node.append("rect")
+        .attr("height", function (d) { return d.dy; })
+        .attr("width", sankey.nodeWidth())
+        .style("fill", function (d) {
+            return d.color = color(d.name.replace(/ .*/, ""));
+        })
+        .style("stroke", function (d) {
+            return d3.rgb(d.color).darker(2);
+        })
+        .append("title")
+        .text(function (d) {
+            return d.name + "\n" + format(d.value);
+        });
+
+    // add in the title for the nodes
+    node.append("text")
+        .attr("x", -6)
+        .attr("y", function (d) { return d.dy / 2; })
+        .attr("dy", ".35em")
+        .attr("text-anchor", "end")
+        .attr("transform", null)
+        .text(function (d) { return d.name; })
+        .filter(function (d) { return d.x < width / 2; })
+        .attr("x", 6 + sankey.nodeWidth())
+        .attr("text-anchor", "start");
+
+    // the function for moving the nodes
+    function dragmove(d) {
+        d3.select(this).attr("transform",
+            "translate(" + (
+                d.x = Math.max(0, Math.min(width - d.dx, d3.event.x))
+            ) + "," + (
+                d.y = Math.max(0, Math.min(height - d.dy, d3.event.y))
+            ) + ")");
+        sankey.relayout();
+        link.attr("d", path);
+    }
+
+    // create a tooltip
+    var tooltip = d3.select("#chart")
+        .append("div")
+        .style("opacity", 0)
+        .attr("class", "tooltip")
+        .style("background-color", "white")
+        .style("border", "solid")
+        .style("border-width", "2px")
+        .style("border-radius", "5px")
+        .style("padding", "5px")
+        .style("position", "fixed")
+
+    function mouseover(d) {
+        tooltip.style("opacity", 1)
+    }
+    function mousemove(d) {
+        let source = d['source']['name'];
+        let target = d['target']['name'];
+        let value = d['value'];
+        tooltip
+            .style("left", (d3.mouse(this)[0] - 40) + "px")
+            .style("top", (d3.mouse(this)[1] + 50) + "px")
+            .html(`
+                Source: ${source}<br>
+                Target: ${target}<br>
+                Valud: ${value}<br>
+            `)
+    }
+    function mouseleave(d) {
+        tooltip.style("opacity", 0)
+    }
+});
