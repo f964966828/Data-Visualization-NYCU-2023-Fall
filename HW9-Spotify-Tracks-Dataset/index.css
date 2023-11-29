@@ -1,0 +1,44 @@
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f2f7fc;
+    color: #333;
+    margin: 20px;
+    line-height: 1.6;
+}
+
+h1,
+h2 {
+    color: #1a3d70;
+    margin: 20px;
+}
+
+h1 {
+    font-size: 30px;
+    border-bottom: 3px solid #1a3d70;
+    padding-bottom: 10px;
+}
+
+h2 {
+    font-size: 24px;
+}
+
+.node rect {
+    cursor: move;
+    fill-opacity: .9;
+    shape-rendering: crispEdges;
+}
+
+.node text {
+    pointer-events: none;
+    text-shadow: 0 1px 0 #fff;
+}
+
+.link {
+    fill: none;
+    stroke: #000;
+    stroke-opacity: .2;
+}
+
+.link:hover {
+    stroke-opacity: .5;
+}
