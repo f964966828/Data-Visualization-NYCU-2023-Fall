@@ -403,7 +403,8 @@ function pie_chart(data) {
 }
 
 
-d3.csv("dataset.csv").then(function (data) {
+//d3.csv("dataset.csv").then(function (data) {
+d3.csv("http://vis.lab.djosix.com:2023/data/spotify_tracks.csv").then(function (data) {
     globalData = data;
     init();
 })
