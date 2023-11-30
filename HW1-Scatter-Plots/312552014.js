@@ -63,8 +63,8 @@ const xAxis = svg.append("g").attr("transform", `translate(0,${height})`);
 const yAxis = svg.append("g");
 
 // Load and process the data
-//d3.csv("iris.csv").then(loadedData => {
-d3.csv("http://vis.lab.djosix.com:2023/data/iris.csv").then(loadedData => {
+d3.csv("iris.csv").then(loadedData => {
+//d3.csv("http://vis.lab.djosix.com:2023/data/iris.csv").then(loadedData => {
     const columns = ["sepal length", "sepal width", "petal length", "petal width"];
     data = loadedData.map(d => {
         d["sepal length"] = +d["sepal length"];

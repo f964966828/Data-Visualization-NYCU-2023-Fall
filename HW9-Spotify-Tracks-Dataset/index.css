@@ -22,23 +22,173 @@ h2 {
     font-size: 24px;
 }
 
-.node rect {
-    cursor: move;
-    fill-opacity: .9;
-    shape-rendering: crispEdges;
+.flex-container {
+    display: flex;
+    /* 啟用 flex 布局 */
+    justify-content: space-between;
+    /* 如果需要，可調整子元素之間的間距 */
+    height: 300px;
 }
 
-.node text {
-    pointer-events: none;
-    text-shadow: 0 1px 0 #fff;
+.button-container {
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+    /* Optional: for aligning buttons centrally */
+    margin-left: 30px;
+    flex-basis: 15%;
+    gap: 30px;
+    /* Optional: adds space between buttons */
 }
 
-.link {
-    fill: none;
-    stroke: #000;
-    stroke-opacity: .2;
+.btn {
+    width: 100%;
+    height: 33%;
+    font-size: 30px;
 }
 
-.link:hover {
-    stroke-opacity: .5;
+label {
+    font-weight: bold;
+    font-size: 35px;
+    color: #1a3d70;
+    text-align: center;
+}
+
+.scrollable-container {
+    flex-basis: 80%;
+    /* 例如，佔據 60% 的空間 */
+    height: 100%;
+    overflow-y: scroll;
+    /* 添加垂直滾動條 */
+    border: 2px solid #ccc;
+    /* 可選，為了更好的可見性添加邊框 */
+    padding: 20px;
+    /* 可選，為內容添加一些間距 */
+    margin: 20px;
+}
+
+.box {
+    position: relative;
+    /* 用於定位叉叉按鈕 */
+    border: 1px solid #ddd;
+    /* 添加輕微的邊框 */
+    border-radius: 8px;
+    /* 圓角邊框 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    /* 添加陰影效果 */
+    padding: 20px;
+    /* 內距 */
+    background-color: #fff;
+    /* 背景顏色 */
+    margin: 5px;
+    /* 外距，根據需要調整 */
+    display: inline-block;
+    /* 使元素的大小根據內容調整 */
+    max-width: 100%;
+    /* 防止方塊超過父元素寬度 */
+    height: 60px;
+}
+
+.close-button {
+    position: absolute;
+    /* 絕對定位於方塊內 */
+    top: 0px;
+    /* 與頂部的距離 */
+    right: 0px;
+    /* 與右側的距離 */
+    border: none;
+    /* 去掉邊框 */
+    background: none;
+    /* 透明背景 */
+    font-size: 20px;
+    /* 調整大小 */
+    cursor: pointer;
+    /* 鼠標懸停時顯示指針 */
+    color: #333;
+    /* 按鈕顏色 */
+}
+
+.close-button:hover {
+    color: #ff5555;
+    /* 鼠標懸停時變色 */
+}
+
+.dropdown {
+    position: absolute;
+    margin-top: 250px;
+}
+
+.search-box {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.dropdown-list {
+    position: absolute;
+    width: 100%;
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    background-color: white;
+}
+
+.dropdown-list li {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.dropdown-list li:hover {
+    background-color: #f2f2f2;
+}
+
+.dropdown-list li.selected {
+    background-color: #5a7ea5;
+    /* Change the background color to indicate selection */
+    color: #fff;
+    /* Change the text color for better visibility */
+}
+
+.tooltip {
+    background-color: #ffffff;
+    border: 2px solid #333333;
+    border-radius: 5px;
+    padding: 15px;
+    max-width: 300px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    color: #333333;
+    font-family: Arial, sans-serif;
+}
+
+.tooltip ul {
+    list-style: none;
+    padding: 0;
+}
+
+.tooltip li {
+    margin-bottom: 8px;
+}
+
+.tooltip strong {
+    font-weight: bold;
+    color: #007bff;
+    /* 改变标题文本颜色 */
+}
+
+.tooltip li {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+
+/* 添加工具提示显示和隐藏动画效果 */
+.tooltip {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
 }
